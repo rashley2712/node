@@ -69,7 +69,7 @@ function getConnectionForUsername(username) {
 function getViewersOnly() {
 	clientShortList = []
 	for (i in clients) {
-		if (clients[i].username == username) clientShortList.push(clients[i]);
+		if (clients[i].username == 'viewer') clientShortList.push(clients[i]);
 	}
 	return clientShortList;
 	
@@ -105,6 +105,7 @@ function informViewersOfKeyPress(player, direction, status) {
 	clientShortList = getViewersOnly();
 	for (i in clientShortList) {
 		connection = clientShortList[i].connection;
+		console.log("Sending a keypress message to :" + clientShortList[i].username);
 		connection.send(JSONpacket);
 	}
 }
