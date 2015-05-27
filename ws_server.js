@@ -7,6 +7,7 @@ var games = [];
 var gameHeartBeatRate = 0; 
 var gameActive = false;
 var players = [];
+var gameTimer;
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -41,6 +42,7 @@ wsServer.on('request', function(request) {
 			if(clients[i].connection == connection) {
 				console.log(timeStamp() + connection.remoteAddress + " (" + clients[i].username + ") disconnected.");
 				clients.splice(i, 1);
+				if (gameActive) stopGame();
 				informViewers();
 				
 			}
@@ -79,18 +81,26 @@ function getViewersOnly() {
 
 function startGame() {
 	players = [];
-	playerStatus = {};
 	for (i in clients) {
+		playerStatus = {};
+		// console.log(clients[i].username); 
 		playerStatus.username = clients[i].username;
-		playerStatus.x = 120;
-		playerStatus.y = 135;
-		playerStatus.direction = 0;
-		players.push(playerStatus);
+		if (playerStatus.username!='viewer') {
+			playerStatus.x = 120 + Math.round(Math.random()*100 - 50);
+			playerStatus.y = 135 + Math.round(Math.random()*100 - 50);
+			playerStatus.direction = Math.floor(Math.random()*4);
+			players.push(playerStatus);
+		}
 	} 
 	console.log(players);
-	gameHeartBeatRate = 100;
-	setInterval(gameBeat, gameHeartBeatRate);	
+	gameHeartBeatRate = 50;
+	gameTimer = setInterval(gameBeat, gameHeartBeatRate);	
 	gameActive = true;
+}
+
+function stopGame() {
+	clearInterval(gameTimer);
+	gameActive = false;
 }
 
 function gameBeat() {
@@ -114,6 +124,8 @@ function gameBeat() {
 	}
 	console.log(players);
 	
+	informPositions();
+	
 }
 
 function processKeyPress(player, direction, status) {
@@ -136,6 +148,16 @@ function processKeyPress(player, direction, status) {
 			break;
 	}
 }
+
+function informPositions() {
+	JSONpacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
+	console.log(JSONpacket);
+	for (i in clients) {
+		connection = clients[i].connection;
+		connection.send(JSONpacket);
+	}
+}
+
 
 function informViewers() {
 	// Informs all viewers of an update to the user list
