@@ -4,6 +4,9 @@ var utils = require('./utils.js');
 
 var clients = [];
 var games = [];
+var gameHeartBeatRate = 0; 
+var gameActive = false;
+var players = [];
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -71,8 +74,67 @@ function getViewersOnly() {
 	for (i in clients) {
 		if (clients[i].username == 'viewer') clientShortList.push(clients[i]);
 	}
-	return clientShortList;
+	return clientShortList;	
+}
+
+function startGame() {
+	players = [];
+	playerStatus = {};
+	for (i in clients) {
+		playerStatus.username = clients[i].username;
+		playerStatus.x = 120;
+		playerStatus.y = 135;
+		playerStatus.direction = 0;
+		players.push(playerStatus);
+	} 
+	console.log(players);
+	gameHeartBeatRate = 100;
+	setInterval(gameBeat, gameHeartBeatRate);	
+	gameActive = true;
+}
+
+function gameBeat() {
+	increment = 1;
+	for (i in players) {
+		direction = players[i].direction;
+		switch (direction) {
+			case 0: // move right
+				players[i].x+= increment;
+				break;
+			case 1: // move down
+				players[i].y+= increment;
+				break;
+			case 2: // move left
+				players[i].x-= increment;
+				break;
+			case 3: // move up
+				players[i].y-= increment;
+				break;
+		}
+	}
+	console.log(players);
 	
+}
+
+function processKeyPress(player, direction, status) {
+	if (status=='off') return;
+	for (i in players) {
+		if (players[i].username == player) activePlayer = players[i];
+	}
+	switch(direction) { 
+		case 'up':
+			activePlayer.direction = 3;
+			break;
+		case 'down':
+			activePlayer.direction = 1;
+			break;
+		case 'left':
+			activePlayer.direction = 2;
+			break;
+		case 'right':
+			activePlayer.direction = 0;
+			break;
+	}
 }
 
 function informViewers() {
@@ -151,6 +213,12 @@ function handleMessage(mString, connection) {
 		}
 		connection.sendUTF(JSON.stringify({msg: "users", data: clientdata}));	
 	}
+	
+	if (command=="startgame") {
+		player = pMessage[1];
+		console.log(timeStamp() + "Startgame requested by " + player);
+		startGame();
+	}
 
 	if (command=="keypress") {
 		direction = pMessage[1];
@@ -161,7 +229,10 @@ function handleMessage(mString, connection) {
 		}
 		player = thisClient.username;
 		
+		if (gameActive) processKeyPress(player, direction, status);
+		
 		informViewersOfKeyPress(player, direction, status);
+		
 	}
 
 	if (command=="ping") {
