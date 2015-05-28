@@ -13,6 +13,7 @@ var width = 400;
 var height = 400;
 var playerReadyList = {};
 var starterTimer = null;
+var trailLength = 175;
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -95,6 +96,8 @@ function startGame() {
 			playerStatus.x = 120 + Math.round(Math.random()*100 - 50);
 			playerStatus.y = 135 + Math.round(Math.random()*100 - 50);
 			playerStatus.direction = Math.floor(Math.random()*4);
+			playerStatus.trail = [];
+			playerStatus.cursor = 0;
 			players.push(playerStatus);
 		}
 	} 
@@ -142,8 +145,16 @@ function gameBeat() {
 		if (players[i].x < 0)      players[i].x = width;
 		if (players[i].y > height) players[i].y = 0;
 		if (players[i].y < 0)      players[i].y = height;
+		
+		// Add the new point to the player's trail...
+		if (players[i].cursor!=trailLength) {
+			players[i].cursor++;
+		} else {
+			players[i].trail.shift();
+		}	
+		players[i].trail.push({x: players[i].x, y:players[i].y});
 	}
-	console.log(players);
+	// console.log(players);
 	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
 	
 }
