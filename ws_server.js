@@ -12,6 +12,7 @@ var positionPacket;
 var width = 400;
 var height = 400;
 var playerReadyList = {};
+var starterTimer = null;
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -85,6 +86,7 @@ function getViewersOnly() {
 
 function startGame() {
 	players = [];
+	starterTimer = null;
 	for (i in clients) {
 		playerStatus = {};
 		// console.log(clients[i].username); 
@@ -97,7 +99,7 @@ function startGame() {
 		}
 	} 
 	console.log(players);
-	gameHeartBeatRate = 50;
+	gameHeartBeatRate = 30;
 	gameTimer = setInterval(gameBeat, gameHeartBeatRate);	
 	gameActive = true;
 	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
@@ -274,10 +276,26 @@ function handleMessage(mString, connection) {
 		}
 		if (allReady) {
 			console.log("All players are ready! Starting in 5 seconds.");
-			setTimeout(startGame, 5000);
+			starterTimer = setTimeout(startGame, 5000);
 			for (i in clients) {
 				connection = clients[i].connection;
 				connection.sendUTF(JSON.stringify({msg: "Game starting in 5 seconds!", data: null}));
+			}
+		}
+		
+	}
+	
+	if (command=='notready') {
+		username = pMessage[1]
+		playerReadyList[username] = false;
+		console.log("playerReadyList: ");
+		console.log(playerReadyList);
+		if (starterTimer!=null) {
+			clearTimeout(starterTimer);
+			starterTimer = null;
+			for (i in clients) {
+				connection = clients[i].connection;
+				connection.sendUTF(JSON.stringify({msg: "Game start cancelled", data: null}));
 			}
 		}
 		
