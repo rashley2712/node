@@ -8,6 +8,10 @@ var gameHeartBeatRate = 0;
 var gameActive = false;
 var players = [];
 var gameTimer;
+var positionPacket;
+var width = 400;
+var height = 400;
+var playerReadyList = {};
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -41,10 +45,10 @@ wsServer.on('request', function(request) {
 		for (i in clients) {
 			if(clients[i].connection == connection) {
 				console.log(timeStamp() + connection.remoteAddress + " (" + clients[i].username + ") disconnected.");
+				delete playerReadyList[clients[i].username];
 				clients.splice(i, 1);
 				if (gameActive) stopGame();
 				informViewers();
-				
 			}
 		}
     });
@@ -96,11 +100,21 @@ function startGame() {
 	gameHeartBeatRate = 50;
 	gameTimer = setInterval(gameBeat, gameHeartBeatRate);	
 	gameActive = true;
+	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
+	
+	// Tell the clients that the game has started.
+	for (i in clients) {
+		connection = clients[i].connection;
+		connection.sendUTF(JSON.stringify({msg: "start", data: 1}));
+	}
+	
 }
 
 function stopGame() {
 	clearInterval(gameTimer);
 	gameActive = false;
+	players = [];
+	positionPacket = "";
 }
 
 function gameBeat() {
@@ -121,10 +135,14 @@ function gameBeat() {
 				players[i].y-= increment;
 				break;
 		}
+		// Wrap around the edges of the playing area
+		if (players[i].x > width)  players[i].x = 0;
+		if (players[i].x < 0)      players[i].x = width;
+		if (players[i].y > height) players[i].y = 0;
+		if (players[i].y < 0)      players[i].y = height;
 	}
 	console.log(players);
-	
-	informPositions();
+	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
 	
 }
 
@@ -160,8 +178,8 @@ function informPositions() {
 
 
 function informViewers() {
-	// Informs all viewers of an update to the user list
-	console.log("Updating the viewers of a change to the list of users.");
+	// Informs all players of an update to the user list
+	console.log("Updating all the players of a change to the list of users.");
 	var clientdata = [];
 	for (i in clients) {
 		var clientObject = {username: null, status: null, ping: null};
@@ -213,11 +231,20 @@ function handleMessage(mString, connection) {
 			connection.sendUTF(JSON.stringify({msg: "connected", data: "You are connected as user: " + username}));
 			console.log(timeStamp() + "New user connected [" + id + "] " + username);			
 			informViewers();
-		
+			playerReadyList[username] = false;
 		} else {
 			connection.sendUTF(JSON.stringify({msg: "error", data: "Username (" + username + ") is already connected. Sorry."}));
 			connection.close();
 			console.log(timeStamp() + "Non-unique username request rejected");
+		}
+	}
+	
+	if (command=="positions") {
+		// Respond to the request with the current positions of all of the players
+		if (gameActive) {
+			connection.sendUTF(positionPacket);
+		} else {
+			console.log("Positions request but game is not active.");
 		}
 	}
 	
@@ -236,10 +263,30 @@ function handleMessage(mString, connection) {
 		connection.sendUTF(JSON.stringify({msg: "users", data: clientdata}));	
 	}
 	
+	if (command=='ready') {
+		username = pMessage[1]
+		playerReadyList[username] = true;
+		console.log("playerReadyList: ");
+		console.log(playerReadyList);
+		allReady = true;
+		for (var user in playerReadyList) {
+			if (!playerReadyList[user]) allReady = false;
+		}
+		if (allReady) {
+			console.log("All players are ready! Starting in 5 seconds.");
+			setTimeout(startGame, 5000);
+			for (i in clients) {
+				connection = clients[i].connection;
+				connection.sendUTF(JSON.stringify({msg: "Game starting in 5 seconds!", data: null}));
+			}
+		}
+		
+	}
+	
 	if (command=="startgame") {
 		player = pMessage[1];
 		console.log(timeStamp() + "Startgame requested by " + player);
-		startGame();
+		if (!gameActive) startGame();
 	}
 
 	if (command=="keypress") {
