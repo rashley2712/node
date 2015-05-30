@@ -93,8 +93,8 @@ function startGame() {
 		// console.log(clients[i].username); 
 		playerStatus.username = clients[i].username;
 		if (playerStatus.username!='viewer') {
-			playerStatus.x = 120 + Math.round(Math.random()*100 - 50);
-			playerStatus.y = 135 + Math.round(Math.random()*100 - 50);
+			playerStatus.x = width/2 + Math.round(Math.random()*150 - 75);
+			playerStatus.y = height/2 + Math.round(Math.random()*150 - 75);
 			playerStatus.direction = Math.floor(Math.random()*4);
 			playerStatus.trail = [];
 			playerStatus.cursor = 0;
@@ -115,11 +115,17 @@ function startGame() {
 	
 }
 
-function stopGame() {
+function stopGame(message) {
 	clearInterval(gameTimer);
 	gameActive = false;
 	players = [];
 	positionPacket = "";
+	data = {reason: message};
+	JSONpacket = JSON.stringify({msg: "stop", data: data});
+	for (i in clients) {
+		connection = clients[i].connection;
+		connection.sendUTF(JSONpacket);
+	}
 }
 
 function gameBeat() {
@@ -229,7 +235,7 @@ function handleMessage(mString, connection) {
 	var pMessage = mString.split("|");
 	var command = pMessage[0];
 	// console.log("Raw message: " + mString);
-	console.log("Command: " + command);
+	// console.log("Command: " + command);
 	if (command=="connect") {
 		username = pMessage[1];
 		if (uniqueUsername(username)) {
@@ -309,6 +315,14 @@ function handleMessage(mString, connection) {
 				connection.sendUTF(JSON.stringify({msg: "Game start cancelled", data: null}));
 			}
 		}
+		
+	}
+	
+	if (command=="suicide") {
+		player = pMessage[1];
+		reason = "Player " + player + " has committed suicide.";
+		console.log(reason);
+		stopGame(reason);
 		
 	}
 	
