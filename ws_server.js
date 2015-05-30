@@ -11,7 +11,6 @@ var gameTimer;
 var positionPacket;
 var width = 400;
 var height = 400;
-var playerReadyList = {};
 var starterTimer = null;
 var trailLength = 175;
 
@@ -42,12 +41,11 @@ wsServer.on('request', function(request) {
     connection.on('close', function() {
 		// close user connection
         console.log("A connection was closed...");
-		//console.log(connection);
 		console.log(connection.remoteAddress + " disconnected");
 		for (i in clients) {
+			console.log(clients[i].username);
 			if(clients[i].connection == connection) {
 				console.log(timeStamp() + connection.remoteAddress + " (" + clients[i].username + ") disconnected.");
-				delete playerReadyList[clients[i].username];
 				clients.splice(i, 1);
 				if (gameActive) stopGame();
 				informViewers();
@@ -70,6 +68,13 @@ function uniqueUsername(username) {
 	return true;
 }
 
+function getClientByConnection(connection) {
+	for (i in clients) 
+		if (clients[i].connection==connection) return clients[i];
+	return false;
+}
+
+
 function getConnectionForUsername(username) {
 	for (i in clients) {
 		if (clients[i].username == username) return clients[i].connection;
@@ -83,6 +88,12 @@ function getViewersOnly() {
 		if (clients[i].username == 'viewer') clientShortList.push(clients[i]);
 	}
 	return clientShortList;	
+}
+
+function giveOtherPlayersPoints(username, points) {
+	for (var i in clients) {
+		if (clients[i].username!=username) clients[i].score+= points;
+	}
 }
 
 function startGame() {
@@ -198,14 +209,13 @@ function informPositions() {
 
 function informViewers() {
 	// Informs all players of an update to the user list
-	console.log("Updating all the players of a change to the list of users.");
+	console.log("Updating all the players of a change to the list of users.");
 	var clientdata = [];
 	for (i in clients) {
-		var clientObject = {username: null, status: null, ping: null};
+		var clientObject = {username: null, status: null, score: null};
 		clientObject.username = clients[i].username;
-		clientObject.ping = clients[i].ping;
+		clientObject.score = clients[i].score;
 		clientObject.status = clients[i].status;
-		console.log(clientObject);
 		clientdata.push(clientObject);
 	}
 	console.log("Updated user list...");
@@ -240,17 +250,16 @@ function handleMessage(mString, connection) {
 		username = pMessage[1];
 		if (uniqueUsername(username)) {
 			id = clients.length;
-			var clientData = {connection: null, username: null, status: 0, id: null, ping: null};
+			var clientData = {connection: null, username: null, status: 0, id: null, score: 0, ping: null};
 			clientData.connection = connection;
 			clientData.id = id;
 			clientData.username = username;
 			clientData.ping = 999;
-			clientData.status = 0;
+			clientData.status = 1;
 			clients.push(clientData);
 			connection.sendUTF(JSON.stringify({msg: "connected", data: "You are connected as user: " + username}));
 			console.log(timeStamp() + "New user connected [" + id + "] " + username);			
 			informViewers();
-			playerReadyList[username] = false;
 		} else {
 			connection.sendUTF(JSON.stringify({msg: "error", data: "Username (" + username + ") is already connected. Sorry."}));
 			connection.close();
@@ -282,48 +291,13 @@ function handleMessage(mString, connection) {
 		connection.sendUTF(JSON.stringify({msg: "users", data: clientdata}));	
 	}
 	
-	if (command=='ready') {
-		username = pMessage[1]
-		playerReadyList[username] = true;
-		console.log("playerReadyList: ");
-		console.log(playerReadyList);
-		allReady = true;
-		for (var user in playerReadyList) {
-			if (!playerReadyList[user]) allReady = false;
-		}
-		if (allReady) {
-			console.log("All players are ready! Starting in 5 seconds.");
-			starterTimer = setTimeout(startGame, 5000);
-			for (i in clients) {
-				connection = clients[i].connection;
-				connection.sendUTF(JSON.stringify({msg: "Game starting in 5 seconds!", data: null}));
-			}
-		}
-		
-	}
-	
-	if (command=='notready') {
-		username = pMessage[1]
-		playerReadyList[username] = false;
-		console.log("playerReadyList: ");
-		console.log(playerReadyList);
-		if (starterTimer!=null) {
-			clearTimeout(starterTimer);
-			starterTimer = null;
-			for (i in clients) {
-				connection = clients[i].connection;
-				connection.sendUTF(JSON.stringify({msg: "Game start cancelled", data: null}));
-			}
-		}
-		
-	}
-	
 	if (command=="suicide") {
 		player = pMessage[1];
 		reason = "Player " + player + " has committed suicide.";
 		console.log(reason);
+		giveOtherPlayersPoints(player, 1);
 		stopGame(reason);
-		
+		informViewers();
 	}
 	
 	if (command=="startgame") {
@@ -361,9 +335,43 @@ function handleMessage(mString, connection) {
 	}
 	
 	if (command=="updatestatus") {
-		console.log(timeStamp() + "update status received...  [" + pMessage[1] + "]");
-		for (i in clients) 	{
-			if (clients[i].connection==connection) clients[i].status = parseInt(pMessage[1]);
+		username = pMessage[1];
+		newStatus = pMessage[2];
+		console.log(timeStamp() + "update status received... from "  + username + " [" + newStatus + "]");
+		activeClient = getClientByConnection(connection);
+		oldStatus = activeClient.status;
+		activeClient.status = parseInt(newStatus);
+		informViewers();
+		
+		// If user has indicated 'ready' then check if all players are ready...
+		if (newStatus==2) {
+			allReady = true;
+			for (i in clients) {
+				if (clients[i].status!=2) allReady = false;
+			}
+		
+			// Start the game countdown!
+			if (allReady) {
+				console.log("All players are ready! Starting in 5 seconds.");
+				starterTimer = setTimeout(startGame, 5000);
+				for (i in clients) {
+					connection = clients[i].connection;
+					connection.sendUTF(JSON.stringify({msg: "Game starting in 5 seconds!", data: null}));
+				}
+			}
+		}
+		
+		// The user has gone from ready to not ready
+		if ((newStatus==1) && (oldStatus == 2)) {
+			if (starterTimer!=null) {
+				clearTimeout(starterTimer);
+				starterTimer = null;
+				for (i in clients) {
+					connection = clients[i].connection;
+					connection.sendUTF(JSON.stringify({msg: "Game start cancelled", data: null}));
+				}
+			}
+		
 		}
 	}
 	
