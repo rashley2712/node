@@ -13,6 +13,7 @@ var width = 400;
 var height = 400;
 var starterTimer = null;
 var trailLength = 175;
+var constBeatInterval = 50;
 
 var server = http.createServer(function(request, response) {
     // process HTTP request. Since we're writing just WebSockets server
@@ -91,9 +92,13 @@ function getViewersOnly() {
 }
 
 function giveOtherPlayersPoints(username, points) {
-	for (var i in clients) {
+	for (var i in clients) 
 		if (clients[i].username!=username) clients[i].score+= points;
-	}
+}
+
+function givePlayerPoints(username, points) {
+	for (var i in clients) 
+		if (clients[i].username==username) clients[i].score+= points;
 }
 
 function startGame() {
@@ -113,7 +118,7 @@ function startGame() {
 		}
 	} 
 	console.log(players);
-	gameHeartBeatRate = 30;
+	gameHeartBeatRate = constBeatInterval;
 	gameTimer = setInterval(gameBeat, gameHeartBeatRate);	
 	gameActive = true;
 	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
@@ -129,7 +134,7 @@ function startGame() {
 function stopGame(message) {
 	clearInterval(gameTimer);
 	gameActive = false;
-	players = [];
+	//players = [];
 	positionPacket = "";
 	data = {reason: message};
 	JSONpacket = JSON.stringify({msg: "stop", data: data});
@@ -170,7 +175,27 @@ function gameBeat() {
 			players[i].trail.shift();
 		}	
 		players[i].trail.push({x: players[i].x, y:players[i].y});
+		
 	}
+	// Collision detection
+	for (p in players) {
+		x = players[p].x;
+		y = players[p].y;
+		username = players[p].username;
+		for (i in players) {
+			trail = players[i].trail;
+			opponentUsername = players[i].username;
+			for (var t=1; t< trail.length-1; t++) {
+				if ((trail[t].x)==x && (trail[t].y==y)) {
+					var message = "Collision! player " + username + " into " + opponentUsername;
+					console.log(message);
+					stopGame(message);
+					givePlayerPoints(opponentUsername, 1);
+				}
+			}
+		}
+	}
+	
 	// console.log(players);
 	positionPacket = JSONpacket = JSON.stringify({msg: "positions", data: players});
 	
