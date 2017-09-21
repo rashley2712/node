@@ -10,10 +10,7 @@ if (port == undefined) port = 8080
 
 var server = http.createServer(function (req, res) {
 	// request handling logic
-	var ip = req.headers['x-forwarded-for'] || 
-     	req.connection.remoteAddress || 
-     	req.socket.remoteAddress ||
-     	req.connection.socket.remoteAddress;
+	var ip = req.socket.remoteAddress;
     console.log("Request received from: " + ip)
 	//console.log("Method: " + req.method)
 	console.log("URL: " + req.url)
