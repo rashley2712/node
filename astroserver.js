@@ -10,20 +10,41 @@ if (port == undefined) port = 8080
 
 var server = http.createServer(function (req, res) {
 	// request handling logic
-	console.log("Request received")
-	console.log("Method: " + req.method)
+	var ip = req.headers['x-forwarded-for'] || 
+     	req.connection.remoteAddress || 
+     	req.socket.remoteAddress ||
+     	req.connection.socket.remoteAddress;
+    console.log("Request received from: " + ip)
+	//console.log("Method: " + req.method)
 	console.log("URL: " + req.url)
 	var URLData = url.parse(req.url, true)
-	// console.log(URLData)	
+	//console.log(URLData)	
 	res.writeHead(200, { 'Content-Type': 'application/json', 
 						  'Access-Control-Allow-Origin': '*' }) 
 	var responseObject = {}
 	
-	astronomy.moonphase(null, function(err, moonphase) {
-		console.log(moonphase)
-		res.write(moonphase)
+	switch(URLData.path.substring(1)) {
+		case 'status' :
+			writeout(null, "OK")
+			break;
+		case 'moonphase' :
+			astronomy.moon(null, writeout)
+			break;
+		case 'sun':
+			astronomy.sun(null, writeout)
+			break;
+		default :
+			res.write("No such service\n")
+			res.write("Try these: 'moonphase', 'sun', 'status'\n")
+			res.end()
+		}
+	
+	function writeout(err, data) {
+		console.log("Saying: " + data)
+		res.write(data)
 		res.end()
-	})
+	}
+	
 
 	}).on('error', function(err) { console.error(err)})
 
