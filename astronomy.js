@@ -5,7 +5,6 @@ function moon(inputDate, callback) {
 }
 
 function sun(inputDate, callback) {
-	inputDate="2014-09-21"
 	if (inputDate == undefined) inputDate = new Date()
 	callPython(["sun.py", "-d " + inputDate], callback)
 }

@@ -12,7 +12,6 @@ var server = http.createServer(function (req, res) {
 	// request handling logic
 	var ip = req.socket.remoteAddress;
     console.log("Request received from: " + ip)
-	//console.log("Method: " + req.method)
 	console.log("URL: " + req.url)
 	var URLData = url.parse(req.url, true)
 	//console.log(URLData)	
@@ -20,7 +19,7 @@ var server = http.createServer(function (req, res) {
 						  'Access-Control-Allow-Origin': '*' }) 
 	var responseObject = {}
 	
-	switch(URLData.path.substring(1)) {
+	switch(URLData.pathname.substring(1)) {
 		case 'status' :
 			writeout(null, "OK")
 			break;
@@ -28,7 +27,8 @@ var server = http.createServer(function (req, res) {
 			astronomy.moon(null, writeout)
 			break;
 		case 'sun':
-			astronomy.sun(null, writeout)
+			var date = URLData.query.date
+			astronomy.sun(date, writeout)
 			break;
 		default :
 			res.write("No such service\n")
