@@ -6,7 +6,7 @@ var astronomy = require('./astronomy.js')
 
 var port = process.argv[2]
 
-if (port == undefined) port = 8080
+if (port == undefined) port = 80
 
 var server = http.createServer(function (req, res) {
 	// request handling logic
