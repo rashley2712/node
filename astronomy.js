@@ -1,12 +1,12 @@
 
 function moon(inputDate, callback) {
 	if (inputDate == undefined) inputDate = new Date()
-	callPython(["moonphase.py"], callback)
+	callPython([__dirname + "/moonphase.py"], callback)
 }
 
 function sun(inputDate, callback) {
 	if (inputDate == undefined) inputDate = new Date()
-	callPython(["sun.py", "-d " + inputDate], callback)
+	callPython([__dirname + "/sun.py", "-d " + inputDate], callback)
 }
 
 
