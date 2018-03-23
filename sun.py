@@ -30,22 +30,22 @@ if __name__ == "__main__":
 	roque = ephem.Observer()
 	roque.lon = '342.1184'
 	roque.lat = '28.7606'
-	roque.elevation = 2326
+	roque.elevation = 2326			# Useless parameter!
 	roque.date = currentDate
 	
-	roque.horizon = "-1.75"
+	roque.horizon = "-1.19"
 	sunset = roque.next_setting(ephem.Sun())
 	sunrise = roque.next_rising(ephem.Sun())
 	
 	roque.horizon = "-18"
-	eTwilight = roque.next_setting(ephem.Sun(), use_center=True)
-	mTwilight = roque.next_rising(ephem.Sun(), use_center=True)
+	eTwilight = roque.next_setting(ephem.Sun(), use_center=False)
+	mTwilight = roque.next_rising(ephem.Sun(), use_center=False)
 	
 	if output:  
 		print "Sunset:", sunset
 		print "Evening twilight:", eTwilight
 		print "Morning twilight:", mTwilight
-		print "Sunrise:", sunrise
+		print "Sunrisgfdgdge:", sunrise
 		
 	if JSON:
 		response = {}
