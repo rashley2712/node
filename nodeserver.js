@@ -16,9 +16,9 @@ var server = http.createServer(function (request, response) {
 	// request handling logic
 	var ip = request.socket.remoteAddress;
     console.log("Request received from: " + ip)
-	// console.log("URL: " + req.url)
+	console.log("URL: " + request.url)
 	var URLData = url.parse(request.url, true)
-	// console.log(URLData)
+	console.log(URLData)
 	var parts = URLData.pathname.split('/')
 	console.log("Requesting: " + parts)
 	switch(parts[1]) {
@@ -29,6 +29,12 @@ var server = http.createServer(function (request, response) {
 			var now = new Date();
 			var dateTimeString = now.toLocaleString();
 			writeout(null, dateTimeString);
+			break;
+		case 'dir' :
+			var directoryPath = URLData.query.path;
+			console.log("Listing a directory for " + directoryPath);
+			fs.readdir("/var/www/" + directoryPath, null, writedir);
+			//writeout(null, "Directory listing...");
 			break;
 		default :
 			console.log("Received request for a file: " + request.url);
@@ -75,6 +81,10 @@ var server = http.createServer(function (request, response) {
 					contentEncoding = 'gzip';
  					console.log("Serving a zip file.")
 					break;
+			case '.mp4':
+					contentType = 'video/mp4';
+					console.log("Serving a video file.")
+					break;
 			}
 
 			fs.readFile(fullFilename, function(error, content) {
@@ -92,11 +102,29 @@ var server = http.createServer(function (request, response) {
 		response.end()
 	}
 
+	function writeoutHTML(err, data) {
+		response.writeHead(200, { 'Content-Type': 'text/html',
+							  'Access-Control-Allow-Origin': '*' })
+		response.write(data)
+		response.end()
+	}
+
+
+	function writedir(err, files) {
+		var directoryContent = "<html><h1>Directory listing...</h1><br>";
+
+		for (var i in files) {
+			directoryContent+="<a href='" + directoryPath  + "/" + files[i].toString() + "'>" + files[i].toString() + "</a><br>\n";
+		}
+		directoryContent+= "</html>";
+		writeoutHTML(null, directoryContent);
+	}
+
 
 	}).on('error', function(err) { console.error(err)})
 
 server.listen(port)
 
 server.on('listening', function(socket) {
-	console.log("Listening on port: " + port)
+	console.log("Listening on port: " + port);
 	})
