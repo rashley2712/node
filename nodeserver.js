@@ -15,7 +15,7 @@ if (port == undefined) port = 80
 var server = http.createServer(function (request, response) {
 	// request handling logic
 	var ip = request.socket.remoteAddress;
-  // console.log("Request received from: " + ip)
+    console.log("Request received from: " + ip)
 	// console.log("URL: " + req.url)
 	var URLData = url.parse(request.url, true)
 	// console.log(URLData)
@@ -24,6 +24,11 @@ var server = http.createServer(function (request, response) {
 	switch(parts[1]) {
 		case 'status' :
 			writeout(null, "OK");
+			break;
+		case 'date' :
+			var now = new Date();
+			var dateTimeString = now.toLocaleString();
+			writeout(null, dateTimeString);
 			break;
 		default :
 			console.log("Received request for a file: " + request.url);
