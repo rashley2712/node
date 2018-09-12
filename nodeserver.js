@@ -88,7 +88,16 @@ var server = http.createServer(function (request, response) {
 			}
 
 			fs.readFile(fullFilename, function(error, content) {
-			response.writeHead(200, { 'Content-Type': contentType, 'Content-Encoding': contentEncoding });
+			console.log(fullFilename);
+			try {
+				var stats = fs.statSync(fullFilename);
+				console.log(stats);
+				response.writeHead(200, { 'Content-Type': contentType, 'Content-Encoding': contentEncoding , 'Content-Length' : stats.size});
+			} catch(err) {
+				console.log("statSync error: " + err);
+				response.writeHead(404, { 'Content-Type': 'text/html', 'Content-Encoding': 'utf8' });
+				content = "404 File not found";
+			}
 			//if (content!=null) console.log(content.toString())
 		  response.end(content, 'utf-8');
 		})
