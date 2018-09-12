@@ -7,6 +7,7 @@ var http = require('http')
 var url = require('url')
 var fs = require('fs')
 var path = require('path')
+var os = require('os')
 
 var port = process.argv[2]
 
@@ -18,9 +19,9 @@ var server = http.createServer(function (request, response) {
     console.log("Request received from: " + ip)
 	console.log("URL: " + request.url)
 	var URLData = url.parse(request.url, true)
-	console.log(URLData)
+	// console.log(URLData)
 	var parts = URLData.pathname.split('/')
-	console.log("Requesting: " + parts)
+	// console.log("Requesting: " + parts)
 	switch(parts[1]) {
 		case 'status' :
 			writeout(null, "OK");
@@ -34,10 +35,22 @@ var server = http.createServer(function (request, response) {
 			var directoryPath = URLData.query.path;
 			console.log("Listing a directory for " + directoryPath);
 			fs.readdir("/var/www/" + directoryPath, null, writedir);
-			//writeout(null, "Directory listing...");
+			break;
+		case 'info' :
+			var systemInfo = {};
+			systemInfo['hostname'] = os.hostname();
+			systemInfo['platform'] = os.platform();
+			systemInfo['release']  =  os.release();
+			systemInfo['uptime']   = os.uptime();
+			systemInfo['arch']     = os.arch();
+			systemInfo['type']     = os.type();
+			systemInfo['totalmem'] = os.totalmem();
+			systemInfo['cpus']     = os.cpus();
+			
+			console.log(systemInfo);
+			writeout(null, JSON.stringify(systemInfo, null, '\n'));
 			break;
 		default :
-			console.log("Received request for a file: " + request.url);
 			var filename = URLData.pathname.substring(1);
 			console.log("Getting file: " + filename);
 			fileServer(filename, response);
