@@ -11,6 +11,9 @@ var os = require('os')
 
 var port = process.argv[2]
 
+var rootPath = "/var/www/";
+		
+
 if (port == undefined) port = 80
 
 var server = http.createServer(function (request, response) {
@@ -57,7 +60,6 @@ var server = http.createServer(function (request, response) {
 		}
 
 	function fileServer(filename, response) {
-		var rootPath = "/var/www/";
 		if (filename=="") { filename = "index.html"};
 		var fullFilename = rootPath + filename
 		var contentType = 'text/html';
@@ -134,10 +136,14 @@ var server = http.createServer(function (request, response) {
 
 	function writedir(err, files) {
 		var directoryContent = "<html><h1>Directory listing...</h1><br>";
-
+		directoryContent+="<table border='1'>";
 		for (var i in files) {
-			directoryContent+="<a href='" + directoryPath  + "/" + files[i].toString() + "'>" + files[i].toString() + "</a><br>\n";
+			directoryContent+="<tr>";
+			directoryContent+="<td><a href='" + directoryPath  + "/" + files[i].toString() + "'>" + files[i].toString() + "</a></td>\n";
+			directoryContent+="<td>" + getSizeAsString(rootPath + directoryPath + "/" + files[i].toString()) + "</td>\n";
+			directoryContent+="</tr>";
 		}
+		directoryContent+= "</table>";
 		directoryContent+= "</html>";
 		writeoutHTML(null, directoryContent);
 	}
@@ -150,3 +156,22 @@ server.listen(port)
 server.on('listening', function(socket) {
 	console.log("Listening on port: " + port);
 	})
+
+
+function getSizeAsString(filename) {
+	var sizeStr;
+	try {
+		var stats = fs.statSync(filename);
+		var size = parseInt(stats.size);
+		if (size > 1E6) {
+			sizeStr = Math.round(size/1E6) + " MB";
+		} else {
+			sizeStr = Math.round(size/1E3) + " kB";
+		}
+	} catch(err) {
+		console.log("statSync error while getting file size of " + filename + ",   error: " + err);		
+		sizeStr = "unknown";
+	}
+			
+	return sizeStr;
+}
