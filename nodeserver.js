@@ -8,6 +8,8 @@ var url = require('url')
 var fs = require('fs')
 var path = require('path')
 var os = require('os')
+var astronomy = require('./astronomy.js')
+
 
 var port = process.argv[2]
 
@@ -39,11 +41,25 @@ var server = http.createServer(function (request, response) {
 			console.log("Listing a directory for " + directoryPath);
 			fs.readdir("/var/www/" + directoryPath, null, writedir);
 			break;
+		case 'astro' :
+			console.log("Requesting astronomy data.... ");
+			console.log(URLData);
+			var astrotool = parts[2];
+			var date = URLData.query.date;
+			switch(astrotool) {
+				case 'moonphase':
+					astronomy.moon(date, writeout)
+					break;
+				case 'sun':
+					astronomy.sun(date, writeout)
+					break;
+			}
+			break;
 		case 'info' :
 			var systemInfo = {};
 			systemInfo['hostname'] = os.hostname();
 			systemInfo['platform'] = os.platform();
-			systemInfo['release']  =  os.release();
+			systemInfo['release']  = os.release();
 			systemInfo['uptime']   = os.uptime();
 			systemInfo['arch']     = os.arch();
 			systemInfo['type']     = os.type();
