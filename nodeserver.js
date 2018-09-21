@@ -43,7 +43,6 @@ var server = http.createServer(function (request, response) {
 			break;
 		case 'astro' :
 			console.log("Requesting astronomy data.... ");
-			console.log(URLData);
 			var astrotool = parts[2];
 			var date = URLData.query.date;
 			switch(astrotool) {
