@@ -68,6 +68,13 @@ var server = http.createServer(function (request, response) {
 			console.log(systemInfo);
 			writeout(null, JSON.stringify(systemInfo, null, '\n'));
 			break;
+		case 'ucam' : 
+			console.log("Requesting ucam data...");
+			var filename = URLData.pathname.substring("ucam".length + 1);
+			var filename = "/home/rashley/ucam" + filename;
+			console.log("Getting file: " + filename);
+			fileServer(filename, response);
+			break;
 		default :
 			var filename = URLData.pathname.substring(1);
 			console.log("Getting file: " + filename);
@@ -76,11 +83,21 @@ var server = http.createServer(function (request, response) {
 
 	function fileServer(filename, response) {
 		if (filename=="") { filename = "index.html"};
-		var fullFilename = rootPath + filename
+		var fullFilename = "";
+		if (filename[0]=='/') {
+			console.log("Full path given...");
+			fullFilename = filename;
+		} else {
+			fullFilename = rootPath + filename
+		}
 		var contentType = 'text/html';
 		var extname = path.extname(filename);
 		var contentEncoding = 'utf8';
 		switch (extname) {
+			case '.dat':
+			case '.txt':
+					contentType = 'text/plain';
+					break;
 			case '.js':
 					contentType = 'text/javascript';
 					break;
