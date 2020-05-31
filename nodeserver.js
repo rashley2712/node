@@ -6,10 +6,11 @@
 var http = require('http')
 var url = require('url')
 var fs = require('fs')
+var formidable = require('formidable');
 var path = require('path')
 var os = require('os')
 var astronomy = require('./astronomy.js')
-
+const { parse } = require('querystring');
 
 var port = process.argv[2]
 
@@ -18,11 +19,78 @@ var rootPath = "/var/www/";
 
 if (port == undefined) port = 80
 
+function convertData(response, filename, callback) {
+	var spawn = require("child_process").spawn;
+	var pythonScript = ["/home/rashley/code/node/viatomToCSV.py"];
+	pythonScript.push(filename); 
+	var pythonCall = spawn('python3', pythonScript);
+	var pythonResponse = "";
+	pythonCall.stdout.on('data', function (data){
+		pythonResponse+= data;
+		});
+
+	pythonCall.stdout.on('close', function(code) {
+		callback(response, pythonResponse);
+		});
+	
+	pythonCall.stderr.on('data', function(data) {
+		console.error(data.toString())
+		});	
+
+}
+
+function reportConversion(response, pythonResponse) {
+	console.log("Python response: ");
+	console.log(pythonResponse);
+	var startIndex = pythonResponse.indexOf('written to file:') + 'written to file:'.length + rootPath.length;
+	var endIndex = pythonResponse.indexOf('\n', startIndex);
+	console.log(startIndex, endIndex);
+	console.log("converted " + pythonResponse.substring(startIndex, endIndex));
+	var filename =  pythonResponse.substring(startIndex, endIndex);
+	var startIndex = pythonResponse.indexOf('saving image to:') + 'saving image to:'.length + rootPath.length;
+	var endIndex = pythonResponse.indexOf('\n', startIndex);
+	console.log(startIndex, endIndex);
+	console.log("image " + pythonResponse.substring(startIndex, endIndex));
+	var imageFilename =  pythonResponse.substring(startIndex, endIndex);
+	response.writeHead(200, { 'Content-Type': 'text/html', 'Content-Encoding': 'utf-8'});
+	response.write("<html>");
+	
+	response.write("<p><a href='" + filename + "'>" + filename + "</a></p>");
+	var textFilename = filename.split('.')[0] + ".txt";
+	console.log("text " + textFilename);
+	response.write("<p><img src='" + imageFilename + "'/></p>");
+	response.write("<p><iframe src='" + textFilename +"'></iframe></p>");
+	response.write("</html>");
+response.end();
+}
+
+
 var server = http.createServer(function (request, response) {
 	// request handling logic
 	var ip = request.socket.remoteAddress;
-    console.log("Request received from: " + ip)
-	console.log("URL: " + request.url)
+    console.log("Request received from: " + ip);
+	console.log("URL: " + request.url);
+	if (request.method === 'POST') {
+		console.log("This was a post request...");
+		var form = new formidable.IncomingForm();
+		form.parse(request, function(err, fields, files) {
+			if (err) console.error(err.message);
+			console.log(fields);
+			console.log(files);
+			var destinationPath = "/var/www/uploads/" + files.fileToUpload.name;
+			var fromName = files.fileToUpload.path;
+			console.log("Tmp name: ", fromName, "... writing to ... " + destinationPath);
+			fs.rename(fromName, destinationPath, function (err) {
+				if (err) throw err;
+				//response.write('File uploaded and saved to ' + destinationPath);
+				convertData(response, destinationPath, reportConversion);
+				//response.end();
+			  });
+			
+		});
+		
+        // response.end('ok');
+  	} else {
 	var URLData = url.parse(request.url, true)
 	// console.log(URLData)
 	var parts = URLData.pathname.split('/')
@@ -80,6 +148,7 @@ var server = http.createServer(function (request, response) {
 			console.log("Getting file: " + filename);
 			fileServer(filename, response);
 		}
+	  }
 
 	function fileServer(filename, response) {
 		if (filename=="") { filename = "index.html"};
@@ -110,6 +179,9 @@ var server = http.createServer(function (request, response) {
 			case '.png':
 					contentType = 'image/png';
 					break;
+			case '.csv':
+					contentType = 'text/csv';
+					break;
 			case '.gif':
 					contentType = 'image/gif';
 					break;
@@ -124,7 +196,7 @@ var server = http.createServer(function (request, response) {
 					contentType = 'application/fits';
 					break;					
 			case '.gz':
-					contentType = 'application/json';
+					contentType = 'application/gzip';
 					contentEncoding = 'gzip';
  					console.log("Serving a zip file.")
 					break;
